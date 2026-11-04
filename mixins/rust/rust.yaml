@@ -1,0 +1,61 @@
+# syntax=docker/sandbox-kit:3
+# Rust toolchain overlay. Content recipe: rust.dockerfile.
+schemaVersion: "3"
+displayName: sbx-tools rust
+description: >-
+  rustup with the stable toolchain, rust-analyzer, clippy and rustfmt under
+  /opt/rust, plus cargo-binstall and cargo-cache. gcc is installed when the
+  sandbox is created, for linking.
+sourceUrl: https://github.com/pavlov-net/sbx-tools
+licenses: [MIT]
+
+kind: mixin
+version: "0.1.0"
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          # rustup toolchain and component downloads.
+          - static.rust-lang.org:443
+          # crates.io index and crate downloads.
+          - crates.io:443
+          - index.crates.io:443
+          - static.crates.io:443
+      # Only while install hooks run; closed before the agent starts.
+      install:
+        allow:
+          - dhi.io:443
+          - deb.debian.org:443
+          - deb.debian.org:80
+          - snapshot.debian.org:443
+          - snapshot.debian.org:80
+
+  # rustc links through cc. The workload has no compiler, and apt rather than
+  # the overlay keeps dpkg's database consistent. gcc only recommends
+  # libc6-dev, so it's named.
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - description: Install the linker driver
+          user: "0"
+          command: |
+            set -e
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends gcc libc6-dev
+            apt-get clean
+            rm -rf /var/lib/apt/lists/*
+
+  # Offered as both versions; the runtime selects the one the workload uses.
+  - type: com.docker.sandbox/agent-context@1
+    optional: true
+    config: &agent-context
+      content: |
+        ## Rust
+
+        rustup lives in /opt/rust (`RUSTUP_HOME`, `CARGO_HOME`) and is writable without root. `cargo binstall` installs prebuilt binaries. `cargo cache` inspects and trims the registry cache.
+
+  - type: com.docker.sandbox/agent-context@2
+    optional: true
+    config: *agent-context

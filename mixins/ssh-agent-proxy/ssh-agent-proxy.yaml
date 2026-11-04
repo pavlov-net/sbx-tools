@@ -1,0 +1,46 @@
+# syntax=docker/sandbox-kit:3
+# Git commit signing through ssh-agent-proxy on the host
+# (https://github.com/pavlov-net/ssh-agent-proxy), e.g. to reach the
+# 1Password SSH agent on Windows from a sandbox in WSL. Opt-in:
+# `sbx-up create --ssh-agent-proxy [HOST[:PORT]]`.
+schemaVersion: "3"
+displayName: ssh-agent-proxy signing
+description: >-
+  Configures git to sign commits and tags via ssh-agent-proxy on the host.
+  Each boot probes the proxy in the background; if it answers, git signing
+  is set up, otherwise nothing changes.
+sourceUrl: https://github.com/pavlov-net/ssh-agent-proxy
+licenses: [MIT]
+
+kind: mixin
+version: "0.1.0"
+
+# Create-phase args: exported to the sandbox and expanded into the network
+# allow below, so a non-default proxy is approved per sandbox at create.
+args:
+  host:
+    default: host.docker.internal
+    pattern: '^[A-Za-z0-9.-]+$'
+    description: Proxy host, as seen from inside the sandbox
+    env: SSH_AGENT_PROXY_HOST
+  port:
+    default: "7221"
+    pattern: '^[0-9]{1,5}$'
+    description: Proxy port
+    env: SSH_AGENT_PROXY_PORT
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          - "${{ kit.args.host }}:${{ kit.args.port }}"
+
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      startup:
+        - description: Configure git signing if the proxy answers
+          user: "1000"
+          background: true
+          env: [SSH_AGENT_PROXY_HOST, SSH_AGENT_PROXY_PORT]
+          command: [bash, /usr/local/lib/ssh-agent-proxy-setup.sh]

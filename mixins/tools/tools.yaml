@@ -1,0 +1,44 @@
+# syntax=docker/sandbox-kit:3
+# CLI tools, Node and shell/git config for a Debian 13 agent workload. Content recipe: tools.dockerfile.
+schemaVersion: "3"
+displayName: sbx-tools
+description: >-
+  Current CLI tools (rg, fd, bat, eza, fzf, gh, git-lfs, yq, delta, mold,
+  bd, prek), Node 26 with npm, typescript-language-server, plus system
+  git, tmux and ssh known_hosts config.
+sourceUrl: https://github.com/pavlov-net/sbx-tools
+licenses: [MIT]
+
+kind: mixin
+version: "0.1.0"
+
+provides: ["node@26"]
+
+# eza, delta, mold and node are glibc builds.
+requires: ["deb/libc6 >= 2.41"]
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          # context7 docs MCP server.
+          - context7.com:443
+          - mcp.context7.com:443
+
+  # Offered as both versions; the runtime selects the one the workload uses.
+  - type: com.docker.sandbox/agent-context@1
+    optional: true
+    config: &agent-context
+      content: |
+        ## sbx-tools
+
+        - Search and files: `rg`, `fd`, `bat`, `eza`, `fzf`. YAML: `yq`. JSON: `jq`.
+        - Git: `gh`, `git-lfs`, `delta` (the configured pager).
+        - Issue tracking: `bd` (beads). Pre-commit hooks: `prek`.
+        - JavaScript: `node`, `npm`, `npx`. Language server: `typescript-language-server`.
+        - `mold` is an opt-in linker: `-C link-arg=-fuse-ld=mold` for Rust, `-fuse-ld=mold` for gcc/clang.
+
+  - type: com.docker.sandbox/agent-context@2
+    optional: true
+    config: *agent-context

@@ -1,0 +1,8 @@
+{
+  "name": "sbx-tools-pyright",
+  "private": true,
+  "description": "Pyright, shipped in the python mixin under /opt/pyright. Renovate's npm manager tracks it.",
+  "dependencies": {
+    "pyright": "1.1.414"
+  }
+}

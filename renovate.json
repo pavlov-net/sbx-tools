@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    "customManagers:dockerfileVersions",
+    ":automergeDigest",
+    ":automergePatch"
+  ],
+  "packageRules": [
+    {
+      "description": "Pinned release binaries: run scripts/update-checksums.sh on the PR branch (hosted Renovate can't run postUpgradeTasks)",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["mixins/**"],
+      "matchDepNames": ["!rust-lang/rust"],
+      "labels": ["needs-checksums"],
+      "automerge": false
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Helper around `sbx create` that adds the sbx-tools kits."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+REGISTRY = "ghcr.io/pavlov-net/sbx-tools"
+AGENTS = ("claude", "codex")
+DEFAULT_AGENT = "claude"
+ALWAYS_KITS = ("sfw", "tools")
+# Name -> on by default.
+OPTIONAL_KITS = {"rust": True, "python": True, "cxx": True, "bun": False}
+SSH_AGENT_PROXY_DEFAULT_PORT = 7221
+SANDBOX_NAME_INVALID = re.compile(r"[^A-Za-z0-9.+-]+")
+# Remote kits default to Docker's registries only; ours live on ghcr.io. The
+# setting is a JSON array of reference prefixes.
+KIT_SOURCES_SETTING = "kit.allowedSources"
+KIT_SOURCES = json.dumps(["docker.io/", "dhi.io/", f"{REGISTRY}/"])
+
+
+def kit_ref(name: str) -> str:
+    return f"{REGISTRY}/{name}:latest"
+
+
+def parse_proxy_endpoint(value: str) -> tuple[str, int]:
+    host, sep, port_s = value.rpartition(":")
+    if not sep:
+        host, port_s = value, str(SSH_AGENT_PROXY_DEFAULT_PORT)
+    if not host or not port_s.isdigit():
+        raise SystemExit(f"invalid --ssh-agent-proxy {value!r}; expected HOST[:PORT]")
+    return host, int(port_s)
+
+
+def default_sandbox_name(agent: str, first_path: str) -> str:
+    workspace = first_path.split(":", 1)[0]
+    abspath = Path(workspace).resolve()
+    basename = abspath.name or abspath.parent.name
+    sanitized = SANDBOX_NAME_INVALID.sub("-", basename).strip("-") or "sandbox"
+    return f"{agent}-{sanitized}"
+
+
+def run(cmd: list[str]) -> None:
+    print(f"$ {' '.join(cmd)}", file=sys.stderr)
+    subprocess.run(cmd, check=True)
+
+
+def cmd_setup(args: argparse.Namespace) -> int:
+    run(["sbx", "settings", "set", KIT_SOURCES_SETTING, KIT_SOURCES])
+    return 0
+
+
+def cmd_create(args: argparse.Namespace) -> int:
+    name = args.name or default_sandbox_name(args.agent, args.paths[0])
+    # v3 compositions otherwise reuse whatever `latest` is cached.
+    create_cmd = ["sbx", "create", "--name", name, "--pull", "always"]
+
+    kits = [kit_ref(kit) for kit in ALWAYS_KITS]
+    kits += [kit_ref(kit) for kit in OPTIONAL_KITS if getattr(args, kit)]
+    if args.ssh_agent_proxy:
+        host, port = parse_proxy_endpoint(args.ssh_agent_proxy)
+        kits.append(kit_ref("ssh-agent-proxy"))
+        create_cmd += ["--kit-arg", f"host={host}", "--kit-arg", f"port={port}"]
+    for kit in kits + args.kit:
+        create_cmd += ["--kit", kit]
+
+    create_cmd.append(args.agent)
+    create_cmd += args.paths
+    run(create_cmd)
+    print(name)
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="sbx-up", description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_setup = sub.add_parser(
+        "setup",
+        help="One-time host setup: allow kits from ghcr.io.",
+        description="Allow kits from the sbx-tools registry. Network allows ship in the kits themselves.",
+    )
+    p_setup.set_defaults(func=cmd_setup)
+
+    p_create = sub.add_parser(
+        "create",
+        help="Create an agent sandbox with the sbx-tools kits.",
+        description="Create a sandbox from Docker's agent kit plus sfw and tools. Optional kits: rust, python and cxx on by default, bun and ssh-agent-proxy off.",
+    )
+    p_create.add_argument(
+        "-a", "--agent", default=DEFAULT_AGENT, choices=AGENTS,
+        help=f"Agent to run (default: {DEFAULT_AGENT}).",
+    )
+    for kit, default in OPTIONAL_KITS.items():
+        p_create.add_argument(
+            f"--{kit}", action=argparse.BooleanOptionalAction, default=default,
+            help=f"Add the {kit} kit (default: {'on' if default else 'off'}).",
+        )
+    p_create.add_argument(
+        "--ssh-agent-proxy", metavar="HOST[:PORT]",
+        help=f"Add the ssh-agent-proxy signing mixin, pointed at HOST[:PORT] (port defaults to {SSH_AGENT_PROXY_DEFAULT_PORT}; e.g. host.docker.internal).",
+    )
+    p_create.add_argument(
+        "--kit", action="append", default=[], metavar="REF",
+        help="Extra mixin to compose (repeatable), e.g. docker.io/sbx/playwright.",
+    )
+    p_create.add_argument(
+        "--name",
+        help="Sandbox name (default: <agent>-<basename of first path>).",
+    )
+    p_create.add_argument(
+        "paths", nargs="+", metavar="PATH",
+        help="Workspace paths (append ':ro' for read-only; first path is the main workspace).",
+    )
+    p_create.set_defaults(func=cmd_create)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        return args.func(args)
+    except subprocess.CalledProcessError as e:
+        return e.returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())
