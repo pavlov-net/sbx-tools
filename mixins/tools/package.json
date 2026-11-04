@@ -1,0 +1,9 @@
+{
+  "name": "sbx-tools-lsp",
+  "private": true,
+  "description": "Language servers shipped in the tools mixin under /opt/lsp. Renovate's npm manager tracks these.",
+  "dependencies": {
+    "typescript": "7.0.2",
+    "typescript-language-server": "6.0.3"
+  }
+}

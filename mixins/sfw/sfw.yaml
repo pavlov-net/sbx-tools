@@ -1,0 +1,57 @@
+# syntax=docker/sandbox-kit:3
+# Socket Firewall over the workload's package managers. Content recipe:
+# sfw.dockerfile. The tools, bun and rust mixins route through it when it's
+# present.
+schemaVersion: "3"
+displayName: Socket Firewall
+description: >-
+  Socket Firewall checks package installs against socket.dev: pip, pip3, uv and
+  uvx, plus npm, npx, bun and cargo when installed, are shims in /usr/local/bin.
+  Don't call the real binaries to get around them.
+sourceUrl: https://github.com/SocketDev/sfw-free
+licenses: [MIT]
+
+kind: mixin
+version: "0.1.0"
+
+# The shims exec these from /usr/bin.
+requires: ["deb/python3-pip", "deb/uv"]
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          # Package verdicts (firewall-api) and the API; hosts taken from the
+          # sfw-free binary.
+          - socket.dev:443
+          - api.socket.dev:443
+          - firewall-api.socket.dev:443
+
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        # ~/.local/bin and npm's global bin precede /usr/local/bin on the
+        # workload PATH, so a package installed there could shadow a shim.
+        # No kit mechanism prepends to PATH; this file is sourced by every
+        # bash (BASH_ENV) and Claude Bash-tool call (CLAUDE_ENV_FILE). The
+        # workload owns it, so it gets a line appended rather than shipped.
+        - description: Put the sfw shims first on PATH
+          user: "0"
+          command: |
+            f=/etc/sandbox-persistent.sh
+            grep -qF '# sfw: shims first' "$f" \
+              || printf '%s\n' '# sfw: shims first' 'case ":$PATH:" in ":/usr/local/bin:"*) ;; *) PATH="/usr/local/bin:$PATH" ;; esac' >> "$f"
+
+  # Offered as both versions; the runtime selects the one the workload uses.
+  - type: com.docker.sandbox/agent-context@1
+    optional: true
+    config: &agent-context
+      content: |
+        ## Socket Firewall
+
+        Package installs go through Socket Firewall: `pip`, `pip3`, `uv` and `uvx` are sfw shims in /usr/local/bin, as are `npm`, `npx`, `bun` and `cargo` when those are installed. Don't call the real binaries directly to get around them. If sfw blocks a package, report it rather than working around the block.
+
+  - type: com.docker.sandbox/agent-context@2
+    optional: true
+    config: *agent-context

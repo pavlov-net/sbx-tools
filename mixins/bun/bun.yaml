@@ -1,0 +1,26 @@
+# syntax=docker/sandbox-kit:3
+# Bun as an opt-in runtime (`sbx-up create --bun`). Content recipe:
+# bun.dockerfile. Its entry points go through the sfw mixin when present.
+schemaVersion: "3"
+displayName: Bun
+description: >-
+  The bun JavaScript runtime, package manager and bundler in /opt/bun/bin.
+sourceUrl: https://github.com/oven-sh/bun
+licenses: [MIT]
+
+kind: mixin
+version: "0.1.0"
+
+capabilities:
+  # Offered as both versions; the runtime selects the one the workload uses.
+  - type: com.docker.sandbox/agent-context@1
+    optional: true
+    config: &agent-context
+      content: |
+        ## Bun
+
+        `bun` and `bunx` are available. Globally installed executables (`bun install -g`) land in ~/.bun/bin, which is on PATH.
+
+  - type: com.docker.sandbox/agent-context@2
+    optional: true
+    config: *agent-context
