@@ -39,7 +39,7 @@ ARG GITLFS_VERSION=3.8.1
 ARG GITLFS_SHA256_AMD64=e72cf723a4a660438862282e8aecf3885fc8123e88bfcad534cf6b941a354b75
 ARG GITLFS_SHA256_ARM64=67895dd77b63329796bc5efdd47b57f218e1f7b98717ebaf936a8238dbcaec0f
 # renovate: datasource=github-releases depName=mikefarah/yq
-ARG YQ_VERSION=4.54.1
+ARG YQ_VERSION=4.54.2
 ARG YQ_SHA256_AMD64=8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f
 ARG YQ_SHA256_ARM64=189088da0c6429ec5178dfaab1a114805f6cab0b61b165ab236efedf1d57a71b
 # renovate: datasource=github-releases depName=dandavison/delta
