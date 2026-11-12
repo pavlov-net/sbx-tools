@@ -12,7 +12,7 @@ ENV RUSTUP_HOME=/opt/rust/rustup \
 
 FROM base AS toolchain
 # renovate: datasource=github-releases depName=rust-lang/rust
-ARG RUST_VERSION=1.99.1
+ARG RUST_VERSION=1.100.0
 RUN curl -fsSL https://sh.rustup.rs -o /tmp/rustup-init.sh \
  && sh /tmp/rustup-init.sh -y --no-modify-path --profile minimal --default-toolchain "${RUST_VERSION}" \
  && "$CARGO_HOME/bin/rustup" component add rust-analyzer clippy rustfmt \
