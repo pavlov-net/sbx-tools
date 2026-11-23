@@ -11,7 +11,7 @@ RUN apt-get update \
 
 ARG TARGETARCH
 # renovate: datasource=github-releases depName=BurntSushi/ripgrep
-ARG RG_VERSION=15.2.0
+ARG RG_VERSION=16.0.0
 ARG RG_SHA256_AMD64=33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c
 ARG RG_SHA256_ARM64=800b1e7206afe799dfb5a6901f23147cfaabe0e52210538100f61e86e1740915
 # renovate: datasource=github-releases depName=sharkdp/fd
