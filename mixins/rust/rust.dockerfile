@@ -21,7 +21,7 @@ RUN curl -fsSL https://sh.rustup.rs -o /tmp/rustup-init.sh \
 FROM base AS extras
 ARG TARGETARCH
 # renovate: datasource=github-releases depName=cargo-bins/cargo-binstall
-ARG CARGO_BINSTALL_VERSION=1.27.0
+ARG CARGO_BINSTALL_VERSION=1.29.0
 ARG CARGO_BINSTALL_SHA256_AMD64=b2e4b70fcddc5bd6fd90c5cf8dc17b4cf0ea54a3db16c65ee0307f42c9bd3187
 ARG CARGO_BINSTALL_SHA256_ARM64=84f2afefd325e52c92702a1f2a396902301ccdafd7614270cbbf46b9cff3accf
 # renovate: datasource=crate depName=cargo-cache
